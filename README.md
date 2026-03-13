@@ -2,7 +2,7 @@
 
 Trello-style Kanban application with drag-and-drop lists/cards, detailed card workflows, filters, and PostgreSQL-backed persistence.
 
-#Demo Images
+# Demo Images
 
 <img width="1917" height="869" alt="Screenshot 2026-03-13 194223" src="https://github.com/user-attachments/assets/a9a442cd-e635-441b-be79-59fa8884c509" />
 
