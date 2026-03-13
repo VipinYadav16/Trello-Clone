@@ -1,4 +1,4 @@
-# Trello Clone (Full Stack)
+# Trello Clone
 
 Trello-style Kanban application with drag-and-drop lists/cards, detailed card workflows, filters, and PostgreSQL-backed persistence.
 
