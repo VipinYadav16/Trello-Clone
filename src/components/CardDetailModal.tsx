@@ -167,6 +167,17 @@ const FULL_COLOR_PALETTE = [
   ],
 ];
 
+const COVER_GRADIENTS = [
+  "linear-gradient(135deg, hsl(210 79% 46%), hsl(262 52% 47%))",
+  "linear-gradient(135deg, hsl(330 60% 50%), hsl(27 96% 54%))",
+  "linear-gradient(135deg, hsl(145 63% 42%), hsl(185 60% 42%))",
+  "linear-gradient(135deg, hsl(0 72% 51%), hsl(340 70% 55%))",
+  "linear-gradient(135deg, hsl(45 93% 47%), hsl(27 96% 54%))",
+  "linear-gradient(135deg, hsl(262 52% 47%), hsl(280 60% 55%))",
+  "linear-gradient(135deg, hsl(85 50% 45%), hsl(145 63% 42%))",
+  "linear-gradient(135deg, hsl(185 60% 42%), hsl(210 79% 46%))",
+];
+
 interface CardDetailModalProps {
   boardId: string;
   listId: string;
@@ -515,8 +526,11 @@ export function CardDetailModal({
                 <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
                   Cover
                 </p>
+                <p className="text-[11px] text-muted-foreground mb-1">
+                  Solid colors
+                </p>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  {FULL_COLOR_PALETTE[0].map((color) => (
+                  {FULL_COLOR_PALETTE.flat().map((color) => (
                     <button
                       key={color}
                       onClick={() =>
@@ -526,6 +540,24 @@ export function CardDetailModal({
                       }
                       className="w-8 h-6 rounded border border-border hover:opacity-80"
                       style={{ background: color }}
+                    />
+                  ))}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground mb-1">
+                  Gradients
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {COVER_GRADIENTS.map((gradient) => (
+                    <button
+                      key={gradient}
+                      onClick={() =>
+                        updateCard(boardId, listId, card.id, {
+                          coverColor: gradient,
+                        })
+                      }
+                      className="w-10 h-6 rounded border border-border hover:opacity-80"
+                      style={{ background: gradient }}
                     />
                   ))}
                   <button

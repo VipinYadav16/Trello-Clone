@@ -193,6 +193,7 @@ interface KanbanState {
   boards: Board[];
   members: Member[];
   currentBoardId: string | null;
+  starredBoardIds: string[];
   searchQuery: string;
   filterLabels: string[];
   filterMemberIds: string[];
@@ -205,6 +206,7 @@ interface KanbanState {
   setCurrentBoard: (boardId: string) => void;
   updateBoardTitle: (boardId: string, title: string) => void;
   updateBoardBackground: (boardId: string, bg: string) => void;
+  toggleBoardStar: (boardId: string) => void;
 
   // List actions
   addList: (boardId: string, title: string) => void;
@@ -442,6 +444,7 @@ export const useKanbanStore = create<KanbanState>()(
         boards: [initial],
         members: MEMBERS,
         currentBoardId: initial.id,
+        starredBoardIds: [],
         searchQuery: "",
         filterLabels: [],
         filterMemberIds: [],
@@ -492,10 +495,20 @@ export const useKanbanStore = create<KanbanState>()(
 
           set((s) => {
             const boards = s.boards.filter((b) => b.id !== boardId);
-            return { boards, currentBoardId: boards[0]?.id ?? null };
+            return {
+              boards,
+              currentBoardId: boards[0]?.id ?? null,
+              starredBoardIds: s.starredBoardIds.filter((id) => id !== boardId),
+            };
           });
         },
         setCurrentBoard: (id) => set({ currentBoardId: id }),
+        toggleBoardStar: (boardId) =>
+          set((s) => ({
+            starredBoardIds: s.starredBoardIds.includes(boardId)
+              ? s.starredBoardIds.filter((id) => id !== boardId)
+              : [...s.starredBoardIds, boardId],
+          })),
         updateBoardTitle: (boardId, title) => {
           if (shouldUseApi()) {
             void (async () => {
