@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 13% 18%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 13% 22%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 13% 22%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 210 79% 46%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 13% 26%;
+    --secondary-foreground: 210 20% 88%;
+
+    --muted: 220 13% 28%;
+    --muted-foreground: 210 10% 62%;
+
+    --accent: 220 13% 30%;
+    --accent-foreground: 210 20% 92%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 30%;
+    --input: 220 13% 30%;
+    --ring: 210 79% 46%;
+
+    --radius: 0.5rem;
+
+    --header-bg: 220 13% 12%;
+    --header-foreground: 0 0% 95%;
+    --board-bg: 280 40% 35%;
+
+    --label-green: 145 63% 42%;
+    --label-yellow: 45 93% 47%;
+    --label-orange: 27 96% 54%;
+    --label-red: 0 72% 51%;
+    --label-purple: 262 52% 47%;
+    --label-blue: 210 79% 46%;
+
+    --sidebar-background: 220 13% 15%;
+    --sidebar-foreground: 210 20% 88%;
+    --sidebar-primary: 210 79% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 22%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 220 13% 28%;
+    --sidebar-ring: 210 79% 46%;
+
+    --list-header-green: 145 63% 32%;
+    --list-header-yellow: 45 80% 38%;
+    --list-header-default: 220 13% 26%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+}
