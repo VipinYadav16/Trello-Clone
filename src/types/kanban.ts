@@ -5,7 +5,13 @@ export interface Member {
   color: string;
 }
 
-export type LabelColor = 'green' | 'yellow' | 'orange' | 'red' | 'purple' | 'blue';
+export type LabelColor =
+  | "green"
+  | "yellow"
+  | "orange"
+  | "red"
+  | "purple"
+  | "blue";
 
 export interface Label {
   id: string;
@@ -32,6 +38,13 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  createdAt: string;
+}
+
 export interface Card {
   id: string;
   title: string;
@@ -41,7 +54,9 @@ export interface Card {
   dueDate: string | null;
   checklists: Checklist[];
   comments: Comment[];
+  attachments: Attachment[];
   coverColor: string | null;
+  coverImageUrl: string | null;
   archived: boolean;
   createdAt: string;
   position: number;

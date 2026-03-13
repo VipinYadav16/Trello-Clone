@@ -8,6 +8,7 @@ import type {
   Checklist,
   ChecklistItem,
   Comment,
+  Attachment,
   Member,
 } from "@/types/kanban";
 
@@ -49,7 +50,9 @@ const seedBoard = (): Board => ({
             },
           ],
           comments: [],
+          attachments: [],
           coverColor: null,
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 0,
@@ -63,7 +66,9 @@ const seedBoard = (): Board => ({
           dueDate: null,
           checklists: [],
           comments: [],
+          attachments: [],
           coverColor: "hsl(262 52% 47%)",
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 1,
@@ -77,7 +82,9 @@ const seedBoard = (): Board => ({
           dueDate: "2026-03-25",
           checklists: [],
           comments: [],
+          attachments: [],
           coverColor: null,
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 2,
@@ -105,7 +112,9 @@ const seedBoard = (): Board => ({
               createdAt: new Date().toISOString(),
             },
           ],
+          attachments: [],
           coverColor: null,
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 0,
@@ -122,7 +131,9 @@ const seedBoard = (): Board => ({
           dueDate: null,
           checklists: [],
           comments: [],
+          attachments: [],
           coverColor: "hsl(0 72% 51%)",
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 1,
@@ -143,7 +154,9 @@ const seedBoard = (): Board => ({
           dueDate: "2026-03-15",
           checklists: [],
           comments: [],
+          attachments: [],
           coverColor: null,
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 0,
@@ -164,7 +177,9 @@ const seedBoard = (): Board => ({
           dueDate: null,
           checklists: [],
           comments: [],
+          attachments: [],
           coverColor: null,
+          coverImageUrl: null,
           archived: false,
           createdAt: new Date().toISOString(),
           position: 0,
@@ -272,6 +287,18 @@ interface KanbanState {
     cardId: string,
     comment: Comment,
   ) => void;
+  addAttachment: (
+    boardId: string,
+    listId: string,
+    cardId: string,
+    attachment: Attachment,
+  ) => void;
+  removeAttachment: (
+    boardId: string,
+    listId: string,
+    cardId: string,
+    attachmentId: string,
+  ) => void;
 
   // Member actions
   addMember: (name: string) => void;
@@ -375,7 +402,10 @@ export const useKanbanStore = create<KanbanState>()(
                   dueDate: card.dueDate || card.due_date || null,
                   checklists: card.checklists || [],
                   comments: card.comments || [],
+                  attachments: card.attachments || [],
                   coverColor: card.coverColor || card.cover_color || null,
+                  coverImageUrl:
+                    card.coverImageUrl || card.cover_image_url || null,
                   archived: Boolean(card.archived),
                   createdAt:
                     card.createdAt ||
@@ -687,7 +717,9 @@ export const useKanbanStore = create<KanbanState>()(
                                 dueDate: null,
                                 checklists: [],
                                 comments: [],
+                                attachments: [],
                                 coverColor: null,
+                                coverImageUrl: null,
                                 archived: false,
                                 createdAt: new Date().toISOString(),
                                 position: l.cards.length,
@@ -725,6 +757,8 @@ export const useKanbanStore = create<KanbanState>()(
                   patchPayload.dueDate = cardUpdates.dueDate;
                 if (cardUpdates.coverColor !== undefined)
                   patchPayload.coverColor = cardUpdates.coverColor;
+                if (cardUpdates.coverImageUrl !== undefined)
+                  patchPayload.coverImageUrl = cardUpdates.coverImageUrl;
                 if (cardUpdates.archived !== undefined)
                   patchPayload.archived = cardUpdates.archived;
                 if (cardUpdates.position !== undefined)
@@ -1125,6 +1159,64 @@ export const useKanbanStore = create<KanbanState>()(
               listId,
               cardId,
               (c) => ({ ...c, comments: [...c.comments, comment] }),
+            ),
+          }));
+        },
+        addAttachment: (boardId, listId, cardId, attachment) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}/attachments`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    name: attachment.name,
+                    url: attachment.url,
+                  }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
+          set((s) => ({
+            boards: updateCardInBoard(
+              s.boards,
+              boardId,
+              listId,
+              cardId,
+              (c) => ({ ...c, attachments: [...c.attachments, attachment] }),
+            ),
+          }));
+        },
+        removeAttachment: (boardId, listId, cardId, attachmentId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/attachments/${attachmentId}`, {
+                  method: "DELETE",
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
+          set((s) => ({
+            boards: updateCardInBoard(
+              s.boards,
+              boardId,
+              listId,
+              cardId,
+              (c) => ({
+                ...c,
+                attachments: c.attachments.filter((a) => a.id !== attachmentId),
+              }),
             ),
           }));
         },

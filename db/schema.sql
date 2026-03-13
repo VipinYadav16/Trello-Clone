@@ -34,10 +34,13 @@ CREATE TABLE IF NOT EXISTS cards (
   description TEXT NOT NULL DEFAULT '',
   due_date DATE,
   cover_color TEXT,
+  cover_image_url TEXT,
   archived BOOLEAN NOT NULL DEFAULT FALSE,
   position INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE cards ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_cards_list_position ON cards(list_id, position);
 CREATE INDEX IF NOT EXISTS idx_cards_board_archived ON cards(board_id, archived);
@@ -88,4 +91,14 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS card_attachments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  board_id UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_comments_card_created ON comments(card_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_attachments_card_created ON card_attachments(card_id, created_at);

@@ -13,6 +13,7 @@ const mapCard = (row) => ({
   description: row.description,
   dueDate: row.due_date,
   coverColor: row.cover_color,
+  coverImageUrl: row.cover_image_url,
   archived: row.archived,
   position: row.position,
   createdAt: row.created_at,
@@ -34,13 +35,14 @@ const getBoardById = async (boardId) => {
     checklistsRes,
     checklistItemsRes,
     commentsRes,
+    attachmentsRes,
   ] = await Promise.all([
     query(
       "SELECT id, board_id, title, position, color, created_at FROM lists WHERE board_id = $1 ORDER BY position ASC",
       [boardId],
     ),
     query(
-      "SELECT id, list_id, title, description, due_date, cover_color, archived, position, created_at FROM cards WHERE board_id = $1 ORDER BY position ASC",
+      "SELECT id, list_id, title, description, due_date, cover_color, cover_image_url, archived, position, created_at FROM cards WHERE board_id = $1 ORDER BY position ASC",
       [boardId],
     ),
     query(
@@ -62,6 +64,10 @@ const getBoardById = async (boardId) => {
       "SELECT id, card_id, member_id, text, created_at FROM comments WHERE board_id = $1 ORDER BY created_at ASC",
       [boardId],
     ),
+    query(
+      "SELECT id, card_id, name, url, created_at FROM card_attachments WHERE board_id = $1 ORDER BY created_at ASC",
+      [boardId],
+    ),
   ]);
 
   const labelsByCard = new Map();
@@ -75,14 +81,12 @@ const getBoardById = async (boardId) => {
   const membersByCard = new Map();
   for (const row of membersRes.rows) {
     if (!membersByCard.has(row.card_id)) membersByCard.set(row.card_id, []);
-    membersByCard
-      .get(row.card_id)
-      .push({
-        id: row.id,
-        name: row.name,
-        avatar: row.avatar,
-        color: row.color,
-      });
+    membersByCard.get(row.card_id).push({
+      id: row.id,
+      name: row.name,
+      avatar: row.avatar,
+      color: row.color,
+    });
   }
 
   const checklistItemsByChecklist = new Map();
@@ -116,6 +120,18 @@ const getBoardById = async (boardId) => {
     });
   }
 
+  const attachmentsByCard = new Map();
+  for (const row of attachmentsRes.rows) {
+    if (!attachmentsByCard.has(row.card_id))
+      attachmentsByCard.set(row.card_id, []);
+    attachmentsByCard.get(row.card_id).push({
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      createdAt: row.created_at,
+    });
+  }
+
   const cardsByList = new Map();
   for (const row of cardsRes.rows) {
     if (!cardsByList.has(row.list_id)) cardsByList.set(row.list_id, []);
@@ -125,6 +141,7 @@ const getBoardById = async (boardId) => {
       members: membersByCard.get(row.id) || [],
       checklists: checklistsByCard.get(row.id) || [],
       comments: commentsByCard.get(row.id) || [],
+      attachments: attachmentsByCard.get(row.id) || [],
     });
   }
 
@@ -280,7 +297,8 @@ app.post("/api/boards/:boardId/lists/reorder", async (req, res) => {
 });
 
 app.post("/api/lists/:listId/cards", async (req, res) => {
-  const { title, description, dueDate, coverColor } = req.body || {};
+  const { title, description, dueDate, coverColor, coverImageUrl } =
+    req.body || {};
   if (!title || typeof title !== "string") {
     return res.status(400).json({ error: "title is required" });
   }
@@ -294,7 +312,7 @@ app.post("/api/lists/:listId/cards", async (req, res) => {
   }
 
   const result = await query(
-    "INSERT INTO cards(board_id, list_id, title, description, due_date, cover_color, position) VALUES ($1, $2, $3, $4, $5, $6, COALESCE((SELECT MAX(position) + 1 FROM cards WHERE list_id = $2), 0)) RETURNING id, board_id, list_id, title, description, due_date, cover_color, archived, position, created_at",
+    "INSERT INTO cards(board_id, list_id, title, description, due_date, cover_color, cover_image_url, position) VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE((SELECT MAX(position) + 1 FROM cards WHERE list_id = $2), 0)) RETURNING id, board_id, list_id, title, description, due_date, cover_color, cover_image_url, archived, position, created_at",
     [
       list.board_id,
       req.params.listId,
@@ -302,6 +320,7 @@ app.post("/api/lists/:listId/cards", async (req, res) => {
       description || "",
       dueDate || null,
       coverColor || null,
+      coverImageUrl || null,
     ],
   );
 
@@ -314,17 +333,19 @@ app.patch("/api/cards/:cardId", async (req, res) => {
     description,
     dueDate,
     coverColor,
+    coverImageUrl,
     archived,
     listId,
     position,
   } = req.body || {};
   const result = await query(
-    "UPDATE cards SET title = COALESCE($1, title), description = COALESCE($2, description), due_date = $3, cover_color = $4, archived = COALESCE($5, archived), list_id = COALESCE($6, list_id), position = COALESCE($7, position) WHERE id = $8 RETURNING id, list_id, title, description, due_date, cover_color, archived, position, created_at",
+    "UPDATE cards SET title = COALESCE($1, title), description = COALESCE($2, description), due_date = $3, cover_color = $4, cover_image_url = $5, archived = COALESCE($6, archived), list_id = COALESCE($7, list_id), position = COALESCE($8, position) WHERE id = $9 RETURNING id, list_id, title, description, due_date, cover_color, cover_image_url, archived, position, created_at",
     [
       title,
       description,
       dueDate,
       coverColor,
+      coverImageUrl,
       archived,
       listId,
       position,
@@ -547,6 +568,50 @@ app.post("/api/cards/:cardId/comments", async (req, res) => {
     [req.params.cardId, card.board_id, memberId, text],
   );
   res.status(201).json(result.rows[0]);
+});
+
+app.post("/api/cards/:cardId/attachments", async (req, res) => {
+  const { name, url } = req.body || {};
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "url is required" });
+  }
+
+  const cardRes = await query("SELECT board_id FROM cards WHERE id = $1", [
+    req.params.cardId,
+  ]);
+  const card = cardRes.rows[0];
+  if (!card) {
+    return res.status(404).json({ error: "card not found" });
+  }
+
+  const attachmentName =
+    typeof name === "string" && name.trim().length > 0
+      ? name.trim()
+      : url.trim();
+
+  const result = await query(
+    "INSERT INTO card_attachments(card_id, board_id, name, url) VALUES ($1, $2, $3, $4) RETURNING id, card_id, name, url, created_at",
+    [req.params.cardId, card.board_id, attachmentName, url.trim()],
+  );
+
+  res.status(201).json({
+    id: result.rows[0].id,
+    cardId: result.rows[0].card_id,
+    name: result.rows[0].name,
+    url: result.rows[0].url,
+    createdAt: result.rows[0].created_at,
+  });
+});
+
+app.delete("/api/attachments/:attachmentId", async (req, res) => {
+  const result = await query(
+    "DELETE FROM card_attachments WHERE id = $1 RETURNING id",
+    [req.params.attachmentId],
+  );
+  if (!result.rows[0]) {
+    return res.status(404).json({ error: "attachment not found" });
+  }
+  res.status(204).send();
 });
 
 app.use((err, _req, res, _next) => {

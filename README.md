@@ -49,12 +49,9 @@ A Kanban-style project management app inspired by Trello UI/UX patterns, with dr
 - Responsive desktop/tablet/mobile layout
 - Multiple boards
 - Comments and activity on cards
-- Card covers (color)
+- Card covers (color + image URL)
+- Card attachments (link attachments with add/remove + open)
 - Board background customization (solid + gradients)
-
-### Good To Have (Not Implemented Yet)
-
-- File attachments upload/preview (UI button exists)
 
 ## Project Structure
 
@@ -141,6 +138,8 @@ Frontend runs on `http://localhost:8080` and proxies `/api` to `http://localhost
 - `PATCH /api/checklist-items/:itemId`
 - `DELETE /api/checklist-items/:itemId`
 - `POST /api/cards/:cardId/comments`
+- `POST /api/cards/:cardId/attachments`
+- `DELETE /api/attachments/:attachmentId`
 
 ## Database Design
 
@@ -153,6 +152,7 @@ Main entities and relationships:
 - `cards` 1:N `checklists`
 - `checklists` 1:N `checklist_items`
 - `cards` 1:N `comments`
+- `cards` 1:N `card_attachments`
 
 Schema includes ordering columns (`position`) for Trello-like drag/reorder behavior.
 
@@ -181,7 +181,7 @@ Deployment steps:
 
 - No authentication required; a default user context is assumed.
 - Initial sample members, board, lists, and cards are provided via `db/seed.sql`.
-- Attachments are currently represented by UI affordance only; binary upload storage is intentionally deferred.
+- Attachments are stored as link metadata (name + URL); binary file upload storage is intentionally deferred.
 
 ## Notes on Originality
 
