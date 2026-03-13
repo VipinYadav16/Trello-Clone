@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useKanbanStore } from "@/store/kanbanStore";
 import {
-  Search,
   Plus,
   LayoutDashboard,
   X,
@@ -9,7 +8,6 @@ import {
   Star,
   Users,
   MoreHorizontal,
-  ChevronLeft,
 } from "lucide-react";
 
 const BOARD_BACKGROUNDS = [
@@ -117,7 +115,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
       {/* Left: Board switcher */}
       <button
         onClick={() => setShowBoardMenu(!showBoardMenu)}
-        className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded bg-secondary hover:bg-accent text-header-foreground text-sm font-medium transition-colors"
+        className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded bg-secondary hover:bg-accent active:scale-95 text-header-foreground text-sm font-medium transition-all duration-150"
       >
         <LayoutDashboard size={16} />
         <span className="hidden sm:inline">Boards</span>
@@ -129,7 +127,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
             className="fixed inset-0 z-40"
             onClick={() => setShowBoardMenu(false)}
           />
-          <div className="absolute top-12 left-4 z-50 bg-card rounded-lg shadow-lg border p-3 w-64">
+          <div className="absolute top-12 left-4 z-50 bg-card rounded-lg shadow-lg border p-3 w-64 origin-top-left animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-150">
             <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
               Your Boards
             </p>
@@ -230,7 +228,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
       <div className="hidden sm:flex items-center gap-1 ml-1">
         <button
           onClick={() => currentBoardId && toggleBoardStar(currentBoardId)}
-          className={`p-1.5 rounded transition-colors ${isCurrentBoardStarred ? "bg-secondary text-yellow-300" : "hover:bg-secondary text-header-foreground/70 hover:text-header-foreground"}`}
+          className={`p-1.5 rounded active:scale-95 transition-all duration-150 ${isCurrentBoardStarred ? "bg-secondary text-yellow-300" : "hover:bg-secondary text-header-foreground/70 hover:text-header-foreground"}`}
           title={isCurrentBoardStarred ? "Unstar board" : "Star board"}
         >
           <Star
@@ -241,7 +239,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
         <div className="relative">
           <button
             onClick={() => setShowMembersMenu((v) => !v)}
-            className="p-1.5 rounded hover:bg-secondary text-header-foreground/70 hover:text-header-foreground transition-colors"
+            className="p-1.5 rounded hover:bg-secondary active:scale-95 text-header-foreground/70 hover:text-header-foreground transition-all duration-150"
             title="Show members"
           >
             <Users size={16} />
@@ -253,7 +251,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowMembersMenu(false)}
               />
-              <div className="absolute left-0 top-9 z-50 w-64 rounded-lg border border-border bg-popover p-3 shadow-lg">
+              <div className="absolute right-0 sm:left-0 sm:right-auto top-9 z-50 w-64 rounded-lg border border-border bg-popover p-3 shadow-lg origin-top-right sm:origin-top-left animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-150">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Members
                 </p>
@@ -288,17 +286,17 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
       <div className="ml-auto flex items-center gap-2 relative">
         <button
           onClick={onToggleFilter}
-          className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded text-sm font-medium transition-colors ${filterOpen || hasFilters ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-accent text-header-foreground"}`}
+          className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded text-sm font-medium active:scale-95 transition-all duration-150 ${filterOpen || hasFilters ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-accent text-header-foreground"}`}
         >
           <Filter size={14} />
-          <span className="hidden sm:inline">Filter</span>
+          <span className="hidden md:inline">Filter</span>
           {hasFilters && !filterOpen && (
             <span className="w-2 h-2 rounded-full bg-destructive" />
           )}
         </button>
         <button
           onClick={() => setShowBgMenu(!showBgMenu)}
-          className="p-1.5 rounded bg-secondary hover:bg-accent text-header-foreground transition-colors"
+          className="p-1.5 rounded bg-secondary hover:bg-accent active:scale-95 text-header-foreground transition-all duration-150"
         >
           <MoreHorizontal size={16} />
         </button>
@@ -309,7 +307,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
               className="fixed inset-0 z-40"
               onClick={() => setShowBgMenu(false)}
             />
-            <div className="absolute right-0 top-10 z-50 bg-popover rounded-lg shadow-lg border w-72">
+            <div className="absolute right-0 top-10 z-50 bg-popover rounded-lg shadow-lg border w-72 origin-top-right animate-in fade-in-0 zoom-in-95 slide-in-from-top-1 duration-150">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
                 <span className="text-sm font-semibold text-foreground">
                   Change background
