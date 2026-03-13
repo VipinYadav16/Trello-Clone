@@ -1,77 +1,45 @@
-# Trello Clone - Full Stack Kanban
+# Trello Clone (Full Stack)
 
-A Kanban-style project management app inspired by Trello UI/UX patterns, with drag-and-drop board workflows, detailed cards, filters, and PostgreSQL-backed API.
+Trello-style Kanban application with drag-and-drop lists/cards, detailed card workflows, filters, and PostgreSQL-backed persistence.
 
-## Tech Stack
+## Stack
 
-- Frontend: React + TypeScript + Vite + Tailwind + Zustand + @hello-pangea/dnd
-- Backend: Node.js + Express
+- Frontend: React, TypeScript, Vite, Tailwind, Zustand, @hello-pangea/dnd
+- Backend: Node.js, Express
 - Database: PostgreSQL
-- Deployment target: Vercel (SPA + serverless API endpoint)
+- Deployment: Vercel (SPA + serverless API entry)
 
-## Features
+## Key Features
 
-### Core (Must Have)
+### Core
 
-- Board management
-- Create board
-- View board with all lists and cards
+- Board create/view
+- List create/edit/delete/reorder
+- Card create/edit/delete/archive
+- Drag cards within list and across lists
+- Card details: labels, due date, checklists, members
+- Search and filters (label/member/due date)
 
-- List management
-- Create list
-- Edit list title
-- Delete list
-- Drag-and-drop reorder lists
+### Extended
 
-- Card management
-- Create card
-- Edit card title + description
-- Delete card
-- Archive card
-- Drag-and-drop cards between lists
-- Drag-and-drop reorder cards inside list
-
-- Card details
-- Add/remove labels
-- Set/remove due date
-- Add checklist and checklist items
-- Mark checklist items complete/incomplete
-- Assign members to cards
-
-- Search and filter
-- Search by card title
-- Filter by labels
-- Filter by members
-- Filter by due date (overdue/today/week)
-
-### Good To Have (Implemented)
-
-- Responsive desktop/tablet/mobile layout
+- Responsive layout (desktop/tablet/mobile)
 - Multiple boards
-- Comments and activity on cards
-- Card covers (color + image URL)
-- Card attachments (link attachments with add/remove + open)
-- Board background customization (solid + gradients)
+- Card comments and activity
+- Card covers (solid, gradient, image URL)
+- Attachments (link + binary upload)
+- Board background customization
 
-## Project Structure
+## Quick Start
 
-- Frontend app: `src/`
-- API server: `server/`
-- Vercel API entry: `api/index.js`
-- Database schema: `db/schema.sql`
-- Seed data: `db/seed.sql`
-
-## Local Setup
-
-### 1. Install dependencies
+### 1) Install
 
 ```bash
 npm install
 ```
 
-### 2. Configure environment
+### 2) Configure env
 
-Copy `.env.example` to `.env` and update values:
+Create `.env`:
 
 ```bash
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/trello_clone
@@ -79,41 +47,48 @@ DATABASE_SSL=false
 PORT=4000
 ```
 
-### 3. Create schema + seed sample data
+### 3) Initialize database
 
 ```bash
 npm run db:reset
 ```
 
-### 4. Run frontend + backend
+### 4) Run app (frontend + backend)
 
 ```bash
 npm run dev:full
 ```
 
-Frontend runs on `http://localhost:8080` and proxies `/api` to `http://localhost:4000`.
+Frontend runs on Vite dev server and proxies `/api` to backend (`PORT`, default `4000`).
 
-## Backend API Overview
+## Useful Scripts
 
-### Health
+- `npm run dev` - Frontend only
+- `npm run dev:server` - Backend only
+- `npm run dev:full` - Frontend + backend
+- `npm run db:schema` - Apply schema
+- `npm run db:seed` - Seed data
+- `npm run db:reset` - Recreate schema + seed
+- `npm run build` - Production build
+- `npm test` - Run tests
 
-- `GET /api/health`
+## Project Layout
 
-### Members
+- `src/` - Frontend code
+- `server/` - Express API
+- `api/index.js` - Vercel API entry
+- `db/schema.sql` - PostgreSQL schema
+- `db/seed.sql` - Sample data
 
-- `GET /api/members`
-- `POST /api/members`
+## API Summary
 
-### Boards
+### Boards and Lists
 
 - `GET /api/boards`
 - `POST /api/boards`
 - `GET /api/boards/:boardId`
 - `PATCH /api/boards/:boardId`
 - `DELETE /api/boards/:boardId`
-
-### Lists
-
 - `POST /api/boards/:boardId/lists`
 - `PATCH /api/lists/:listId`
 - `DELETE /api/lists/:listId`
@@ -127,7 +102,7 @@ Frontend runs on `http://localhost:8080` and proxies `/api` to `http://localhost
 - `POST /api/lists/:listId/cards/reorder`
 - `POST /api/cards/:cardId/move`
 
-### Labels, Members, Checklists, Comments
+### Card Details
 
 - `POST /api/cards/:cardId/labels`
 - `DELETE /api/cards/:cardId/labels/:labelId`
@@ -138,54 +113,47 @@ Frontend runs on `http://localhost:8080` and proxies `/api` to `http://localhost
 - `PATCH /api/checklist-items/:itemId`
 - `DELETE /api/checklist-items/:itemId`
 - `POST /api/cards/:cardId/comments`
-- `POST /api/cards/:cardId/attachments`
-- `POST /api/cards/:cardId/attachments/upload` (multipart file upload)
-- `GET /api/attachments/:attachmentId/file` (binary download/preview)
+
+### Attachments
+
+- `POST /api/cards/:cardId/attachments` (link attachment)
+- `POST /api/cards/:cardId/attachments/upload` (binary upload)
+- `GET /api/attachments/:attachmentId/file`
 - `DELETE /api/attachments/:attachmentId`
 
-## Database Design
+### Members and Health
 
-Main entities and relationships:
+- `GET /api/members`
+- `POST /api/members`
+- `DELETE /api/members/:memberId`
+- `GET /api/health`
+
+## Database Model (High Level)
 
 - `boards` 1:N `lists`
 - `lists` 1:N `cards`
 - `cards` M:N `labels` via `card_labels`
 - `cards` M:N `members` via `card_members`
-- `cards` 1:N `checklists`
-- `checklists` 1:N `checklist_items`
+- `cards` 1:N `checklists` -> `checklist_items`
 - `cards` 1:N `comments`
 - `cards` 1:N `card_attachments`
-- `card_attachments` 1:1 `card_attachment_files` (for binary file uploads)
+- `card_attachments` 1:1 `card_attachment_files`
 
-Schema includes ordering columns (`position`) for Trello-like drag/reorder behavior.
-
-## Frontend Data Behavior
-
-- Frontend uses Zustand local persistence for fast UX/offline-like behavior.
-- On app load, it attempts API hydration from `/api` (boards + members).
-- If API is unavailable, it falls back to seeded local in-browser data.
+Ordering is preserved with `position` fields for Trello-like drag behavior.
 
 ## Vercel Deployment
 
-This repository is deployable on Vercel:
-
-- Frontend served as SPA
-- API exposed through `api/index.js` (Express handler)
-- Route rewrites configured in `vercel.json`
-
-Deployment steps:
-
-1. Import repo in Vercel.
-2. Set environment variables (`DATABASE_URL`, `DATABASE_SSL`).
-3. Ensure PostgreSQL instance is reachable from Vercel.
-4. Run schema/seed against your deployed database.
+1. Import repository in Vercel.
+2. Set `DATABASE_URL` and `DATABASE_SSL`.
+3. Ensure PostgreSQL is reachable from Vercel.
+4. Apply `db/schema.sql` and `db/seed.sql` to production DB.
 
 ## Assumptions
 
-- No authentication required; a default user context is assumed.
-- Initial sample members, board, lists, and cards are provided via `db/seed.sql`.
-- Attachments support both links and binary uploads; uploaded file bytes are stored in PostgreSQL.
+- No authentication (single default workspace context).
+- Seeded sample board/lists/cards/members are provided.
+- Uploaded attachments are stored in PostgreSQL.
 
-## Notes on Originality
+## Originality
 
-UI is Trello-inspired in layout and interaction patterns but implemented with original component structure and code in this repository.
+The UI is Trello-inspired, but implementation and code structure are original to this repository.
