@@ -315,6 +315,93 @@ export const useKanbanStore = create<KanbanState>()(
   persist(
     (set, get) => {
       const initial = seedBoard();
+
+      const hydrateFromApi = async (force = false) => {
+        if (!force && get().isHydratedFromApi) return;
+        try {
+          const [boardsRes, membersRes] = await Promise.all([
+            fetch("/api/boards"),
+            fetch("/api/members"),
+          ]);
+          if (!boardsRes.ok || !membersRes.ok) return;
+
+          const boardsPayload = (await boardsRes.json()) as {
+            boards: Array<{
+              id: string;
+              title: string;
+              background: string;
+              created_at?: string;
+              createdAt?: string;
+            }>;
+          };
+          const membersPayload = (await membersRes.json()) as {
+            members: Array<{
+              id: string;
+              name: string;
+              avatar: string;
+              color: string;
+            }>;
+          };
+          if (!boardsPayload.boards?.length) return;
+
+          const boardIds = boardsPayload.boards.map((b) => b.id);
+          const boardDetails = await Promise.all(
+            boardIds.map(async (boardId) => {
+              const response = await fetch(`/api/boards/${boardId}`);
+              if (!response.ok) return null;
+              return response.json();
+            }),
+          );
+
+          const mappedBoards: Board[] = boardDetails
+            .filter(Boolean)
+            .map((board: any) => ({
+              id: board.id,
+              title: board.title,
+              background: board.background,
+              createdAt:
+                board.createdAt || board.created_at || new Date().toISOString(),
+              lists: (board.lists || []).map((list: any) => ({
+                id: list.id,
+                title: list.title,
+                color: list.color,
+                position: list.position,
+                cards: (list.cards || []).map((card: any) => ({
+                  id: card.id,
+                  title: card.title,
+                  description: card.description || "",
+                  labels: card.labels || [],
+                  memberIds: (card.members || []).map((m: any) => m.id),
+                  dueDate: card.dueDate || card.due_date || null,
+                  checklists: card.checklists || [],
+                  comments: card.comments || [],
+                  coverColor: card.coverColor || card.cover_color || null,
+                  archived: Boolean(card.archived),
+                  createdAt:
+                    card.createdAt ||
+                    card.created_at ||
+                    new Date().toISOString(),
+                  position: card.position ?? 0,
+                })),
+              })),
+            }));
+
+          if (!mappedBoards.length) return;
+          set((s) => ({
+            boards: mappedBoards,
+            members: membersPayload.members,
+            currentBoardId: mappedBoards.some((b) => b.id === s.currentBoardId)
+              ? s.currentBoardId
+              : mappedBoards[0].id,
+            isHydratedFromApi: true,
+          }));
+        } catch {
+          // Ignore API hydration errors to preserve local-first/offline behavior.
+        }
+      };
+
+      const shouldUseApi = () => get().isHydratedFromApi;
+
       return {
         boards: [initial],
         members: MEMBERS,
@@ -326,6 +413,22 @@ export const useKanbanStore = create<KanbanState>()(
         isHydratedFromApi: false,
 
         addBoard: (title) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch("/api/boards", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           const board: Board = {
             id: uid(),
             title,
@@ -338,26 +441,89 @@ export const useKanbanStore = create<KanbanState>()(
             currentBoardId: board.id,
           }));
         },
-        deleteBoard: (boardId) =>
+        deleteBoard: (boardId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/boards/${boardId}`, { method: "DELETE" });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => {
             const boards = s.boards.filter((b) => b.id !== boardId);
             return { boards, currentBoardId: boards[0]?.id ?? null };
-          }),
+          });
+        },
         setCurrentBoard: (id) => set({ currentBoardId: id }),
-        updateBoardTitle: (boardId, title) =>
+        updateBoardTitle: (boardId, title) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/boards/${boardId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id === boardId ? { ...b, title } : b,
             ),
-          })),
-        updateBoardBackground: (boardId, bg) =>
+          }));
+        },
+        updateBoardBackground: (boardId, bg) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/boards/${boardId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ background: bg }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id === boardId ? { ...b, background: bg } : b,
             ),
-          })),
+          }));
+        },
 
-        addList: (boardId, title) =>
+        addList: (boardId, title) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/boards/${boardId}/lists`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -370,8 +536,25 @@ export const useKanbanStore = create<KanbanState>()(
                     ],
                   },
             ),
-          })),
-        updateListTitle: (boardId, listId, title) =>
+          }));
+        },
+        updateListTitle: (boardId, listId, title) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/lists/${listId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -383,8 +566,25 @@ export const useKanbanStore = create<KanbanState>()(
                     ),
                   },
             ),
-          })),
-        updateListColor: (boardId, listId, color) =>
+          }));
+        },
+        updateListColor: (boardId, listId, color) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/lists/${listId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ color: color ?? null }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -396,8 +596,21 @@ export const useKanbanStore = create<KanbanState>()(
                     ),
                   },
             ),
-          })),
-        deleteList: (boardId, listId) =>
+          }));
+        },
+        deleteList: (boardId, listId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/lists/${listId}`, { method: "DELETE" });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -407,15 +620,51 @@ export const useKanbanStore = create<KanbanState>()(
                     lists: b.lists.filter((l) => l.id !== listId),
                   },
             ),
-          })),
-        reorderLists: (boardId, lists) =>
+          }));
+        },
+        reorderLists: (boardId, lists) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/boards/${boardId}/lists/reorder`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    orderedListIds: lists.map((l) => l.id),
+                  }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id === boardId ? { ...b, lists } : b,
             ),
-          })),
+          }));
+        },
 
-        addCard: (boardId, listId, title) =>
+        addCard: (boardId, listId, title) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/lists/${listId}/cards`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -448,8 +697,55 @@ export const useKanbanStore = create<KanbanState>()(
                     ),
                   },
             ),
-          })),
-        updateCard: (boardId, listId, cardId, updates) =>
+          }));
+        },
+        updateCard: (boardId, listId, cardId, updates) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                const { memberIds, ...cardUpdates } =
+                  updates as Partial<Card> & {
+                    memberIds?: string[];
+                  };
+
+                if (memberIds) {
+                  await fetch(`/api/cards/${cardId}/members`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ memberIds }),
+                  });
+                }
+
+                const patchPayload: Record<string, unknown> = {};
+                if (cardUpdates.title !== undefined)
+                  patchPayload.title = cardUpdates.title;
+                if (cardUpdates.description !== undefined)
+                  patchPayload.description = cardUpdates.description;
+                if (cardUpdates.dueDate !== undefined)
+                  patchPayload.dueDate = cardUpdates.dueDate;
+                if (cardUpdates.coverColor !== undefined)
+                  patchPayload.coverColor = cardUpdates.coverColor;
+                if (cardUpdates.archived !== undefined)
+                  patchPayload.archived = cardUpdates.archived;
+                if (cardUpdates.position !== undefined)
+                  patchPayload.position = cardUpdates.position;
+
+                if (Object.keys(patchPayload).length > 0) {
+                  await fetch(`/api/cards/${cardId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(patchPayload),
+                  });
+                }
+
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -458,8 +754,21 @@ export const useKanbanStore = create<KanbanState>()(
               cardId,
               (c) => ({ ...c, ...updates }),
             ),
-          })),
-        deleteCard: (boardId, listId, cardId) =>
+          }));
+        },
+        deleteCard: (boardId, listId, cardId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}`, { method: "DELETE" });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -476,8 +785,25 @@ export const useKanbanStore = create<KanbanState>()(
                     ),
                   },
             ),
-          })),
-        moveCard: (boardId, fromListId, toListId, cardId, newIndex) =>
+          }));
+        },
+        moveCard: (boardId, fromListId, toListId, cardId, newIndex) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}/move`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ toListId, newIndex }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) => {
               if (b.id !== boardId) return b;
@@ -497,16 +823,35 @@ export const useKanbanStore = create<KanbanState>()(
                 ...b,
                 lists: lists.map((l) => {
                   if (l.id === toListId) {
-                    const cards = [...l.cards];
-                    cards.splice(newIndex, 0, card!);
-                    return { ...l, cards };
+                    const movedCards = [...l.cards];
+                    movedCards.splice(newIndex, 0, card!);
+                    return { ...l, cards: movedCards };
                   }
                   return l;
                 }),
               };
             }),
-          })),
-        reorderCards: (boardId, listId, cards) =>
+          }));
+        },
+        reorderCards: (boardId, listId, cards) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/lists/${listId}/cards/reorder`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    orderedCardIds: cards.map((c) => c.id),
+                  }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: s.boards.map((b) =>
               b.id !== boardId
@@ -518,9 +863,29 @@ export const useKanbanStore = create<KanbanState>()(
                     ),
                   },
             ),
-          })),
+          }));
+        },
 
-        addLabel: (boardId, listId, cardId, label) =>
+        addLabel: (boardId, listId, cardId, label) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}/labels`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    text: label.text,
+                    color: label.color,
+                  }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -529,8 +894,23 @@ export const useKanbanStore = create<KanbanState>()(
               cardId,
               (c) => ({ ...c, labels: [...c.labels, label] }),
             ),
-          })),
-        removeLabel: (boardId, listId, cardId, labelId) =>
+          }));
+        },
+        removeLabel: (boardId, listId, cardId, labelId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}/labels/${labelId}`, {
+                  method: "DELETE",
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -542,8 +922,25 @@ export const useKanbanStore = create<KanbanState>()(
                 labels: c.labels.filter((l) => l.id !== labelId),
               }),
             ),
-          })),
-        addChecklist: (boardId, listId, cardId, checklist) =>
+          }));
+        },
+        addChecklist: (boardId, listId, cardId, checklist) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}/checklists`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ title: checklist.title }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -552,8 +949,23 @@ export const useKanbanStore = create<KanbanState>()(
               cardId,
               (c) => ({ ...c, checklists: [...c.checklists, checklist] }),
             ),
-          })),
-        removeChecklist: (boardId, listId, cardId, checklistId) =>
+          }));
+        },
+        removeChecklist: (boardId, listId, cardId, checklistId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/checklists/${checklistId}`, {
+                  method: "DELETE",
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -565,8 +977,25 @@ export const useKanbanStore = create<KanbanState>()(
                 checklists: c.checklists.filter((cl) => cl.id !== checklistId),
               }),
             ),
-          })),
-        addChecklistItem: (boardId, listId, cardId, checklistId, item) =>
+          }));
+        },
+        addChecklistItem: (boardId, listId, cardId, checklistId, item) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/checklists/${checklistId}/items`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: item.text }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -582,8 +1011,34 @@ export const useKanbanStore = create<KanbanState>()(
                 ),
               }),
             ),
-          })),
-        toggleChecklistItem: (boardId, listId, cardId, checklistId, itemId) =>
+          }));
+        },
+        toggleChecklistItem: (boardId, listId, cardId, checklistId, itemId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                const currentCard = get()
+                  .boards.find((b) => b.id === boardId)
+                  ?.lists.find((l) => l.id === listId)
+                  ?.cards.find((c) => c.id === cardId);
+                const currentItem = currentCard?.checklists
+                  .find((cl) => cl.id === checklistId)
+                  ?.items.find((i) => i.id === itemId);
+                if (!currentItem) return;
+
+                await fetch(`/api/checklist-items/${itemId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ completed: !currentItem.completed }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -606,8 +1061,23 @@ export const useKanbanStore = create<KanbanState>()(
                 ),
               }),
             ),
-          })),
-        removeChecklistItem: (boardId, listId, cardId, checklistId, itemId) =>
+          }));
+        },
+        removeChecklistItem: (boardId, listId, cardId, checklistId, itemId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/checklist-items/${itemId}`, {
+                  method: "DELETE",
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -626,8 +1096,28 @@ export const useKanbanStore = create<KanbanState>()(
                 ),
               }),
             ),
-          })),
-        addComment: (boardId, listId, cardId, comment) =>
+          }));
+        },
+        addComment: (boardId, listId, cardId, comment) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/cards/${cardId}/comments`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    memberId: comment.memberId,
+                    text: comment.text,
+                  }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           set((s) => ({
             boards: updateCardInBoard(
               s.boards,
@@ -636,9 +1126,26 @@ export const useKanbanStore = create<KanbanState>()(
               cardId,
               (c) => ({ ...c, comments: [...c.comments, comment] }),
             ),
-          })),
+          }));
+        },
 
         addMember: (name) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch("/api/members", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ name }),
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
           const initials =
             name
               .split(" ")
@@ -668,87 +1175,7 @@ export const useKanbanStore = create<KanbanState>()(
           }),
 
         loadFromApi: async () => {
-          if (get().isHydratedFromApi) return;
-          try {
-            const [boardsRes, membersRes] = await Promise.all([
-              fetch("/api/boards"),
-              fetch("/api/members"),
-            ]);
-            if (!boardsRes.ok || !membersRes.ok) return;
-
-            const boardsPayload = (await boardsRes.json()) as {
-              boards: Array<{
-                id: string;
-                title: string;
-                background: string;
-                created_at?: string;
-                createdAt?: string;
-              }>;
-            };
-            const membersPayload = (await membersRes.json()) as {
-              members: Array<{
-                id: string;
-                name: string;
-                avatar: string;
-                color: string;
-              }>;
-            };
-            if (!boardsPayload.boards?.length) return;
-
-            const boardIds = boardsPayload.boards.map((b) => b.id);
-            const boardDetails = await Promise.all(
-              boardIds.map(async (boardId) => {
-                const response = await fetch(`/api/boards/${boardId}`);
-                if (!response.ok) return null;
-                return response.json();
-              }),
-            );
-
-            const mappedBoards: Board[] = boardDetails
-              .filter(Boolean)
-              .map((board: any) => ({
-                id: board.id,
-                title: board.title,
-                background: board.background,
-                createdAt:
-                  board.createdAt ||
-                  board.created_at ||
-                  new Date().toISOString(),
-                lists: (board.lists || []).map((list: any) => ({
-                  id: list.id,
-                  title: list.title,
-                  color: list.color,
-                  position: list.position,
-                  cards: (list.cards || []).map((card: any) => ({
-                    id: card.id,
-                    title: card.title,
-                    description: card.description || "",
-                    labels: card.labels || [],
-                    memberIds: (card.members || []).map((m: any) => m.id),
-                    dueDate: card.dueDate || card.due_date || null,
-                    checklists: card.checklists || [],
-                    comments: card.comments || [],
-                    coverColor: card.coverColor || card.cover_color || null,
-                    archived: Boolean(card.archived),
-                    createdAt:
-                      card.createdAt ||
-                      card.created_at ||
-                      new Date().toISOString(),
-                    position: card.position ?? 0,
-                  })),
-                })),
-              }));
-
-            if (!mappedBoards.length) return;
-            set({
-              boards: mappedBoards,
-              members: membersPayload.members,
-              currentBoardId: mappedBoards[0].id,
-              isHydratedFromApi: true,
-            });
-          } catch {
-            // Ignore API hydration errors to preserve local-first/offline behavior.
-          }
+          await hydrateFromApi(false);
         },
       };
     },
