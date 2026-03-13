@@ -34,7 +34,7 @@ const BoardPage = () => {
 
   if (!board) {
     return (
-      <div className="flex flex-col h-screen">
+      <div className="flex min-h-screen flex-col">
         <AppHeader
           onToggleFilter={() => setFilterOpen(!filterOpen)}
           filterOpen={filterOpen}
@@ -110,14 +110,14 @@ const BoardPage = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex min-h-screen flex-col">
       <AppHeader
         onToggleFilter={() => setFilterOpen(!filterOpen)}
         filterOpen={filterOpen}
       />
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1">
         <div
-          className="flex-1 overflow-x-auto overflow-y-hidden p-2 sm:p-4"
+          className="flex-1 overflow-auto p-2 sm:p-4"
           style={{ background: board.background }}
         >
           <DragDropContext onDragEnd={onDragEnd}>
