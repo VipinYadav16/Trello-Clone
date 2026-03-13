@@ -2,6 +2,12 @@
 
 Trello-style Kanban application with drag-and-drop lists/cards, detailed card workflows, filters, and PostgreSQL-backed persistence.
 
+#Demo Images
+
+<img width="1917" height="869" alt="Screenshot 2026-03-13 194223" src="https://github.com/user-attachments/assets/a9a442cd-e635-441b-be79-59fa8884c509" />
+
+<img width="1919" height="869" alt="Screenshot 2026-03-13 194303" src="https://github.com/user-attachments/assets/73952577-7385-4723-bdf7-7df9ed5b7bcc" />
+
 ## Stack
 
 - Frontend: React, TypeScript, Vite, Tailwind, Zustand, @hello-pangea/dnd
