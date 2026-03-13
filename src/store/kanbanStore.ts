@@ -77,7 +77,7 @@ const seedBoard = (): Board => ({
           id: uid(),
           title: "Set up CI/CD pipeline",
           description: "Configure GitHub Actions",
-          labels: [{ id: uid(), text: "DevOps", color: "orange" }],
+          labels: [{ id: uid(), text: "QA", color: "orange" }],
           memberIds: ["m3"],
           dueDate: "2026-03-25",
           checklists: [],
@@ -100,7 +100,7 @@ const seedBoard = (): Board => ({
           id: uid(),
           title: "Finalize sprint scope",
           description: "Align stories with product goals",
-          labels: [{ id: uid(), text: "Planning", color: "yellow" }],
+          labels: [{ id: uid(), text: "Docs", color: "yellow" }],
           memberIds: ["m1", "m2"],
           dueDate: "2026-03-17",
           checklists: [],
@@ -118,7 +118,7 @@ const seedBoard = (): Board => ({
           description: "",
           labels: [
             { id: uid(), text: "Design", color: "purple" },
-            { id: uid(), text: "Urgent", color: "red" },
+            { id: uid(), text: "Blocked", color: "red" },
           ],
           memberIds: ["m2"],
           dueDate: null,
@@ -305,7 +305,7 @@ const seedBoard = (): Board => ({
           id: uid(),
           title: "Project kickoff meeting",
           description: "Initial planning session completed",
-          labels: [{ id: uid(), text: "Meeting", color: "green" }],
+          labels: [{ id: uid(), text: "Backend", color: "green" }],
           memberIds: ["m1", "m2", "m3", "m4"],
           dueDate: null,
           checklists: [],
@@ -321,7 +321,7 @@ const seedBoard = (): Board => ({
           id: uid(),
           title: "Set up monitoring dashboards",
           description: "Configured uptime and latency alerts",
-          labels: [{ id: uid(), text: "Ops", color: "blue" }],
+          labels: [{ id: uid(), text: "Research", color: "blue" }],
           memberIds: ["m1"],
           dueDate: null,
           checklists: [],
@@ -459,6 +459,7 @@ interface KanbanState {
 
   // Member actions
   addMember: (name: string) => void;
+  removeMember: (memberId: string) => void;
 
   // Filter actions
   setSearchQuery: (q: string) => void;
@@ -1458,6 +1459,35 @@ export const useKanbanStore = create<KanbanState>()(
             color: `hsl(${hue} 60% 45%)`,
           };
           set((s) => ({ members: [...s.members, member] }));
+        },
+        removeMember: (memberId) => {
+          if (shouldUseApi()) {
+            void (async () => {
+              try {
+                await fetch(`/api/members/${memberId}`, {
+                  method: "DELETE",
+                });
+                await hydrateFromApi(true);
+              } catch {
+                // keep current state on request failure
+              }
+            })();
+            return;
+          }
+
+          set((s) => ({
+            members: s.members.filter((m) => m.id !== memberId),
+            boards: s.boards.map((b) => ({
+              ...b,
+              lists: b.lists.map((l) => ({
+                ...l,
+                cards: l.cards.map((c) => ({
+                  ...c,
+                  memberIds: c.memberIds.filter((id) => id !== memberId),
+                })),
+              })),
+            })),
+          }));
         },
 
         setSearchQuery: (q) => set({ searchQuery: q }),

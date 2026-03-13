@@ -8,6 +8,7 @@ import {
   Star,
   Users,
   MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 
 const BOARD_BACKGROUNDS = [
@@ -63,6 +64,8 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
     starredBoardIds,
     setCurrentBoard,
     addBoard,
+    addMember,
+    removeMember,
     toggleBoardStar,
     updateBoardTitle,
     updateBoardBackground,
@@ -79,6 +82,7 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
   const [showMembersMenu, setShowMembersMenu] = useState(false);
   const [editingBoardTitle, setEditingBoardTitle] = useState(false);
   const [boardTitleDraft, setBoardTitleDraft] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
 
   const hasFilters =
     filterLabels.length > 0 ||
@@ -255,6 +259,28 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Members
                 </p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newMemberName.trim()) return;
+                    addMember(newMemberName.trim());
+                    setNewMemberName("");
+                  }}
+                  className="mb-2 flex gap-1"
+                >
+                  <input
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    placeholder="Add member..."
+                    className="w-full rounded border border-border bg-secondary px-2 py-1.5 text-xs text-foreground"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground"
+                  >
+                    Add
+                  </button>
+                </form>
                 <div className="max-h-56 space-y-1 overflow-y-auto">
                   {members.map((m) => (
                     <div
@@ -267,7 +293,16 @@ export function AppHeader({ onToggleFilter, filterOpen }: AppHeaderProps) {
                       >
                         {m.avatar}
                       </div>
-                      <span className="text-sm text-foreground">{m.name}</span>
+                      <span className="flex-1 text-sm text-foreground">
+                        {m.name}
+                      </span>
+                      <button
+                        onClick={() => removeMember(m.id)}
+                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        title="Remove member"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   ))}
                   {members.length === 0 && (

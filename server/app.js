@@ -200,6 +200,16 @@ app.post("/api/members", async (req, res) => {
   res.status(201).json(created.rows[0]);
 });
 
+app.delete("/api/members/:memberId", async (req, res) => {
+  const result = await query("DELETE FROM members WHERE id = $1 RETURNING id", [
+    req.params.memberId,
+  ]);
+  if (!result.rows[0]) {
+    return res.status(404).json({ error: "member not found" });
+  }
+  res.status(204).send();
+});
+
 app.get("/api/boards", async (_req, res) => {
   const result = await query(
     "SELECT id, title, background, created_at FROM boards ORDER BY created_at ASC",

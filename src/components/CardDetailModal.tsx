@@ -33,7 +33,7 @@ function MemberPickerPopover({
   const [showAdd, setShowAdd] = useState(false);
 
   return (
-    <div className="absolute top-full left-0 mt-1 z-50 bg-popover rounded-lg shadow-lg border p-3 w-72">
+    <div className="mt-2 z-50 bg-popover rounded-lg shadow-lg border p-3 w-full max-w-xs">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-semibold text-foreground">Members</p>
         <button
@@ -186,13 +186,22 @@ interface CardDetailModalProps {
 }
 
 const LABEL_COLORS: { color: LabelColor; name: string }[] = [
-  { color: "green", name: "Green" },
-  { color: "yellow", name: "Yellow" },
-  { color: "orange", name: "Orange" },
-  { color: "red", name: "Red" },
-  { color: "purple", name: "Purple" },
-  { color: "blue", name: "Blue" },
+  { color: "green", name: "Backend" },
+  { color: "yellow", name: "Docs" },
+  { color: "orange", name: "QA" },
+  { color: "red", name: "Blocked" },
+  { color: "purple", name: "Design" },
+  { color: "blue", name: "Research" },
 ];
+
+const DEFAULT_LABEL_TEXT: Record<LabelColor, string> = {
+  green: "Backend",
+  yellow: "Docs",
+  orange: "QA",
+  red: "Blocked",
+  purple: "Design",
+  blue: "Research",
+};
 
 export function CardDetailModal({
   boardId,
@@ -225,7 +234,6 @@ export function CardDetailModal({
     useState<string>("hsl(145 63% 42%)");
   const [editingLabelText, setEditingLabelText] = useState("");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
-  const [newLabelText, setNewLabelText] = useState("");
   const [selectedLabelColor, setSelectedLabelColor] =
     useState<LabelColor>("blue");
   const [showMemberPicker, setShowMemberPicker] = useState(false);
@@ -326,6 +334,11 @@ export function CardDetailModal({
     )
       return "purple";
     return "blue";
+  };
+
+  const normalizedLabelText = (color: LabelColor, text?: string) => {
+    const trimmed = text?.trim();
+    return trimmed && trimmed.length > 0 ? trimmed : DEFAULT_LABEL_TEXT[color];
   };
 
   return (
@@ -695,32 +708,56 @@ export function CardDetailModal({
               </div>
 
               {/* Members display */}
-              {card.memberIds.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-                    Members
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    {members
-                      .filter((m) => card.memberIds.includes(m.id))
-                      .map((m) => (
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                  Members
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {members
+                    .filter((m) => card.memberIds.includes(m.id))
+                    .map((m) => (
+                      <div key={m.id} className="relative group">
                         <div
-                          key={m.id}
                           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-primary-foreground"
                           style={{ background: m.color }}
+                          title={m.name}
                         >
                           {m.avatar}
                         </div>
-                      ))}
-                    <button
-                      onClick={() => setShowMemberPicker(!showMemberPicker)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary hover:bg-accent text-muted-foreground"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
+                        <button
+                          onClick={() =>
+                            updateCard(boardId, listId, card.id, {
+                              memberIds: card.memberIds.filter(
+                                (id) => id !== m.id,
+                              ),
+                            })
+                          }
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-card border border-border text-muted-foreground hover:text-destructive hidden group-hover:flex items-center justify-center"
+                          title="Remove member"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  <button
+                    onClick={() => setShowMemberPicker(!showMemberPicker)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary hover:bg-accent text-muted-foreground"
+                    title="Add member"
+                  >
+                    <Plus size={14} />
+                  </button>
                 </div>
-              )}
+                {showMemberPicker && (
+                  <div className="relative z-20">
+                    <MemberPickerPopover
+                      boardId={boardId}
+                      listId={listId}
+                      card={card}
+                      onClose={() => setShowMemberPicker(false)}
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* Labels display */}
               {card.labels.length > 0 && (
@@ -739,7 +776,7 @@ export function CardDetailModal({
                         }
                         title="Click to remove"
                       >
-                        {l.text || l.color}
+                        {normalizedLabelText(l.color, l.text)}
                       </span>
                     ))}
                   </div>
@@ -1068,7 +1105,7 @@ export function CardDetailModal({
                           } else {
                             addLabel(boardId, listId, card.id, {
                               id: crypto.randomUUID(),
-                              text: newLabelText,
+                              text: normalizedLabelText(lc.color),
                               color: lc.color,
                             });
                           }
@@ -1086,7 +1123,7 @@ export function CardDetailModal({
                           } else {
                             addLabel(boardId, listId, card.id, {
                               id: crypto.randomUUID(),
-                              text: newLabelText,
+                              text: normalizedLabelText(lc.color),
                               color: lc.color,
                             });
                           }
@@ -1094,15 +1131,12 @@ export function CardDetailModal({
                         className="flex-1 h-8 rounded-md hover:opacity-90 transition-opacity flex items-center px-3"
                         style={{ background: `hsl(var(--label-${lc.color}))` }}
                       >
-                        {card.labels.find((l) => l.color === lc.color)
-                          ?.text && (
-                          <span className="text-xs font-medium text-primary-foreground">
-                            {
-                              card.labels.find((l) => l.color === lc.color)
-                                ?.text
-                            }
-                          </span>
-                        )}
+                        <span className="text-xs font-medium text-primary-foreground">
+                          {normalizedLabelText(
+                            lc.color,
+                            card.labels.find((l) => l.color === lc.color)?.text,
+                          )}
+                        </span>
                       </button>
                       <button
                         onClick={() =>
@@ -1110,8 +1144,11 @@ export function CardDetailModal({
                             card.labels.find((l) => l.color === lc.color)?.id ??
                               null,
                             labelColorToHsl(lc.color),
-                            card.labels.find((l) => l.color === lc.color)
-                              ?.text ?? "",
+                            normalizedLabelText(
+                              lc.color,
+                              card.labels.find((l) => l.color === lc.color)
+                                ?.text,
+                            ),
                           )
                         }
                         className="p-1 rounded hover:bg-accent text-muted-foreground"
@@ -1189,7 +1226,7 @@ export function CardDetailModal({
                     }
                     addLabel(boardId, listId, card.id, {
                       id: crypto.randomUUID(),
-                      text: editingLabelText,
+                      text: normalizedLabelText(labelColor, editingLabelText),
                       color: labelColor,
                     });
                     setShowLabelEditor(false);
@@ -1245,14 +1282,17 @@ export function CardDetailModal({
                         removeLabel(boardId, listId, card.id, editingLabelId);
                         addLabel(boardId, listId, card.id, {
                           id: crypto.randomUUID(),
-                          text: editingLabelText,
+                          text: normalizedLabelText(
+                            labelColor,
+                            editingLabelText,
+                          ),
                           color: labelColor,
                         });
                       }
                     } else {
                       addLabel(boardId, listId, card.id, {
                         id: crypto.randomUUID(),
-                        text: editingLabelText,
+                        text: normalizedLabelText(labelColor, editingLabelText),
                         color: labelColor,
                       });
                     }
@@ -1276,23 +1316,6 @@ export function CardDetailModal({
                   </button>
                 )}
               </div>
-            </div>
-          </>
-        )}
-
-        {showMemberPicker && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowMemberPicker(false)}
-            />
-            <div className="relative">
-              <MemberPickerPopover
-                boardId={boardId}
-                listId={listId}
-                card={card}
-                onClose={() => setShowMemberPicker(false)}
-              />
             </div>
           </>
         )}
