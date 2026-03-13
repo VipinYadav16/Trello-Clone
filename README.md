@@ -139,6 +139,8 @@ Frontend runs on `http://localhost:8080` and proxies `/api` to `http://localhost
 - `DELETE /api/checklist-items/:itemId`
 - `POST /api/cards/:cardId/comments`
 - `POST /api/cards/:cardId/attachments`
+- `POST /api/cards/:cardId/attachments/upload` (multipart file upload)
+- `GET /api/attachments/:attachmentId/file` (binary download/preview)
 - `DELETE /api/attachments/:attachmentId`
 
 ## Database Design
@@ -153,6 +155,7 @@ Main entities and relationships:
 - `checklists` 1:N `checklist_items`
 - `cards` 1:N `comments`
 - `cards` 1:N `card_attachments`
+- `card_attachments` 1:1 `card_attachment_files` (for binary file uploads)
 
 Schema includes ordering columns (`position`) for Trello-like drag/reorder behavior.
 
@@ -181,7 +184,7 @@ Deployment steps:
 
 - No authentication required; a default user context is assumed.
 - Initial sample members, board, lists, and cards are provided via `db/seed.sql`.
-- Attachments are stored as link metadata (name + URL); binary file upload storage is intentionally deferred.
+- Attachments support both links and binary uploads; uploaded file bytes are stored in PostgreSQL.
 
 ## Notes on Originality
 

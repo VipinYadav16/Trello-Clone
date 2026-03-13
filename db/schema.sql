@@ -100,5 +100,13 @@ CREATE TABLE IF NOT EXISTS card_attachments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS card_attachment_files (
+  attachment_id UUID PRIMARY KEY REFERENCES card_attachments(id) ON DELETE CASCADE,
+  content_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  file_data BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_comments_card_created ON comments(card_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_attachments_card_created ON card_attachments(card_id, created_at);

@@ -293,6 +293,12 @@ interface KanbanState {
     cardId: string,
     attachment: Attachment,
   ) => void;
+  uploadAttachmentFile: (
+    boardId: string,
+    listId: string,
+    cardId: string,
+    file: File,
+  ) => Promise<void>;
   removeAttachment: (
     boardId: string,
     listId: string,
@@ -1189,6 +1195,44 @@ export const useKanbanStore = create<KanbanState>()(
               listId,
               cardId,
               (c) => ({ ...c, attachments: [...c.attachments, attachment] }),
+            ),
+          }));
+        },
+        uploadAttachmentFile: async (boardId, listId, cardId, file) => {
+          if (shouldUseApi()) {
+            try {
+              const formData = new FormData();
+              formData.append("file", file);
+              await fetch(`/api/cards/${cardId}/attachments/upload`, {
+                method: "POST",
+                body: formData,
+              });
+              await hydrateFromApi(true);
+            } catch {
+              // keep current state on request failure
+            }
+            return;
+          }
+
+          const objectUrl = URL.createObjectURL(file);
+          set((s) => ({
+            boards: updateCardInBoard(
+              s.boards,
+              boardId,
+              listId,
+              cardId,
+              (c) => ({
+                ...c,
+                attachments: [
+                  ...c.attachments,
+                  {
+                    id: uid(),
+                    name: file.name,
+                    url: objectUrl,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+              }),
             ),
           }));
         },

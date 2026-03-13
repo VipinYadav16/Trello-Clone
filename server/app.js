@@ -1,8 +1,13 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 import { query, withTransaction } from "./db.js";
 
 const app = express();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 app.use(cors());
 app.use(express.json());
@@ -601,6 +606,84 @@ app.post("/api/cards/:cardId/attachments", async (req, res) => {
     url: result.rows[0].url,
     createdAt: result.rows[0].created_at,
   });
+});
+
+app.post(
+  "/api/cards/:cardId/attachments/upload",
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "file is required" });
+    }
+
+    const cardRes = await query("SELECT board_id FROM cards WHERE id = $1", [
+      req.params.cardId,
+    ]);
+    const card = cardRes.rows[0];
+    if (!card) {
+      return res.status(404).json({ error: "card not found" });
+    }
+
+    const attachment = await withTransaction(async (client) => {
+      const createdAttachment = await client.query(
+        "INSERT INTO card_attachments(card_id, board_id, name, url) VALUES ($1, $2, $3, $4) RETURNING id, card_id, name, url, created_at",
+        [req.params.cardId, card.board_id, req.file.originalname, ""],
+      );
+
+      const attachmentId = createdAttachment.rows[0].id;
+      const downloadUrl = `/api/attachments/${attachmentId}/file`;
+
+      await client.query("UPDATE card_attachments SET url = $1 WHERE id = $2", [
+        downloadUrl,
+        attachmentId,
+      ]);
+
+      await client.query(
+        "INSERT INTO card_attachment_files(attachment_id, content_type, size_bytes, file_data) VALUES ($1, $2, $3, $4)",
+        [
+          attachmentId,
+          req.file.mimetype || "application/octet-stream",
+          req.file.size,
+          req.file.buffer,
+        ],
+      );
+
+      return {
+        ...createdAttachment.rows[0],
+        url: downloadUrl,
+      };
+    });
+
+    res.status(201).json({
+      id: attachment.id,
+      cardId: attachment.card_id,
+      name: attachment.name,
+      url: attachment.url,
+      createdAt: attachment.created_at,
+    });
+  },
+);
+
+app.get("/api/attachments/:attachmentId/file", async (req, res) => {
+  const result = await query(
+    "SELECT a.name, f.content_type, f.file_data FROM card_attachments a JOIN card_attachment_files f ON f.attachment_id = a.id WHERE a.id = $1",
+    [req.params.attachmentId],
+  );
+
+  const file = result.rows[0];
+  if (!file) {
+    return res.status(404).json({ error: "attachment file not found" });
+  }
+
+  res.setHeader(
+    "Content-Type",
+    file.content_type || "application/octet-stream",
+  );
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${(file.name || "attachment").replace(/"/g, "")}"`,
+  );
+  res.send(file.file_data);
 });
 
 app.delete("/api/attachments/:attachmentId", async (req, res) => {

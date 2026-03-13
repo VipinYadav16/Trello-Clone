@@ -1,15 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useKanbanStore } from "@/store/kanbanStore";
 import { AppHeader } from "@/components/AppHeader";
 import { KanbanList } from "@/components/KanbanList";
 import { CardDetailModal } from "@/components/CardDetailModal";
 import { FilterSidebar } from "@/components/FilterSidebar";
-import { Plus, X } from "lucide-react";
+import { Archive, Plus, X } from "lucide-react";
 
 const BoardPage = () => {
-  const { boards, currentBoardId, reorderLists, moveCard, reorderCards } =
-    useKanbanStore();
+  const {
+    boards,
+    currentBoardId,
+    reorderLists,
+    moveCard,
+    reorderCards,
+    updateCard,
+  } = useKanbanStore();
   const board = boards.find((b) => b.id === currentBoardId);
   const [addingList, setAddingList] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
@@ -20,6 +26,7 @@ const BoardPage = () => {
     cardId: string;
   } | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     void loadFromApi();
@@ -87,6 +94,20 @@ const BoardPage = () => {
         .find((l) => l.id === detailOpen.listId)
         ?.cards.find((c) => c.id === detailOpen.cardId)
     : null;
+
+  const archivedCards = useMemo(
+    () =>
+      board.lists.flatMap((list) =>
+        list.cards
+          .filter((card) => card.archived)
+          .map((card) => ({
+            ...card,
+            listId: list.id,
+            listTitle: list.title,
+          })),
+      ),
+    [board.lists],
+  );
 
   return (
     <div className="flex flex-col h-screen">
@@ -186,6 +207,69 @@ const BoardPage = () => {
           card={detailCard}
           onClose={() => setDetailOpen(null)}
         />
+      )}
+
+      {archivedCards.length > 0 && (
+        <div className="fixed bottom-4 left-4 z-30">
+          <button
+            onClick={() => setShowArchived(true)}
+            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-lg hover:bg-accent"
+          >
+            <Archive size={16} /> Archived ({archivedCards.length})
+          </button>
+        </div>
+      )}
+
+      {showArchived && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowArchived(false)}
+          />
+          <div className="relative z-10 w-full max-w-2xl rounded-xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h3 className="text-base font-semibold text-foreground">
+                Archived cards
+              </h3>
+              <button
+                onClick={() => setShowArchived(false)}
+                className="rounded p-1 text-muted-foreground hover:bg-accent"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto p-3">
+              <div className="space-y-2">
+                {archivedCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-secondary px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {card.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        List: {card.listTitle}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        updateCard(board.id, card.listId, card.id, {
+                          archived: false,
+                        })
+                      }
+                      className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    >
+                      Unarchive
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

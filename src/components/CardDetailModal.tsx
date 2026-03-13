@@ -201,6 +201,7 @@ export function CardDetailModal({
     removeChecklistItem,
     addComment,
     addAttachment,
+    uploadAttachmentFile,
     removeAttachment,
     deleteCard,
   } = useKanbanStore();
@@ -227,6 +228,8 @@ export function CardDetailModal({
   const [showAttachmentForm, setShowAttachmentForm] = useState(false);
   const [attachmentName, setAttachmentName] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [coverImageInput, setCoverImageInput] = useState(
     card.coverImageUrl ?? "",
   );
@@ -252,6 +255,18 @@ export function CardDetailModal({
     setAttachmentName("");
     setAttachmentUrl("");
     setShowAttachmentForm(false);
+  };
+
+  const tryUploadAttachmentFile = async () => {
+    if (!attachmentFile) return;
+    setIsUploadingAttachment(true);
+    try {
+      await uploadAttachmentFile(boardId, listId, card.id, attachmentFile);
+      setAttachmentFile(null);
+      setShowAttachmentForm(false);
+    } finally {
+      setIsUploadingAttachment(false);
+    }
   };
 
   const openLabelEditor = (
@@ -558,6 +573,29 @@ export function CardDetailModal({
 
                 {showAttachmentForm && (
                   <div className="bg-secondary rounded-lg p-2 mb-2 space-y-2">
+                    <div className="space-y-2 pb-2 border-b border-border">
+                      <label className="text-xs font-semibold text-muted-foreground block">
+                        Upload file
+                      </label>
+                      <input
+                        type="file"
+                        onChange={(e) =>
+                          setAttachmentFile(e.target.files?.[0] || null)
+                        }
+                        className="w-full text-sm text-foreground file:mr-2 file:px-2 file:py-1 file:text-xs file:rounded file:border file:border-border file:bg-card file:text-foreground"
+                      />
+                      <button
+                        onClick={() => void tryUploadAttachmentFile()}
+                        disabled={!attachmentFile || isUploadingAttachment}
+                        className="px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded disabled:opacity-50"
+                      >
+                        {isUploadingAttachment ? "Uploading..." : "Upload file"}
+                      </button>
+                    </div>
+
+                    <label className="text-xs font-semibold text-muted-foreground block pt-1">
+                      Or add link
+                    </label>
                     <input
                       value={attachmentName}
                       onChange={(e) => setAttachmentName(e.target.value)}
